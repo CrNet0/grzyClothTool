@@ -1,4 +1,4 @@
-﻿using CodeWalker;
+using CodeWalker;
 using CodeWalker.GameFiles;
 using grzyClothTool.Controls;
 using grzyClothTool.Models.Drawable;
@@ -14,8 +14,6 @@ public static class CWHelper
 {
     public static PreviewWindowHost DockedPreviewHost;
     public static string GTAVPath => GTAFolder.GetCurrentGTAFolderWithTrailingSlash();
-
-    private static readonly YtdFile _ytdFile = new();
 
     private static Enums.SexType PrevDrawableSex;
 
@@ -39,8 +37,9 @@ public static class CWHelper
 
     public static YtdFile GetYtdFile(string path)
     {
-        _ytdFile.Load(File.ReadAllBytes(path));
-        return _ytdFile;
+        var ytd = new YtdFile();
+        ytd.Load(File.ReadAllBytes(path));
+        return ytd;
     }
 
     public static YtdFile CreateYtdFile(GTexture texture, string name)

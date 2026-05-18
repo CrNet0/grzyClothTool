@@ -1,4 +1,4 @@
-﻿using CodeWalker.GameFiles;
+using CodeWalker.GameFiles;
 using grzyClothTool.Helpers;
 using ImageMagick;
 using System;
@@ -220,49 +220,58 @@ public class GTexture : INotifyPropertyChanged
         }
 
         await Task.Delay(Random.Shared.Next(25, 100));
-        await Task.Run(() =>
+
+        await _semaphore.WaitAsync();
+        try
         {
-            try
+            await Task.Run(() =>
             {
-                using MagickImage img = ImgHelper.GetImage(FullFilePath);
-                if (img == null)
-                    return;
-
-                img.Resize(90, 90);
-                int w = (int)img.Width;
-                int h = (int)img.Height;
-                byte[] pixels = img.ToByteArray(MagickFormat.Bgra);
-
-                using Bitmap bitmap = new(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                BitmapData bitmapData = bitmap.LockBits(
-                    new Rectangle(0, 0, w, h),
-                    ImageLockMode.WriteOnly,
-                    bitmap.PixelFormat);
-
-                Marshal.Copy(pixels, 0, bitmapData.Scan0, pixels.Length);
-                bitmap.UnlockBits(bitmapData);
-
-                Application.Current.Dispatcher.Invoke(() =>
+                try
                 {
-                    var source = BitmapSource.Create(
-                        bitmap.Width,
-                        bitmap.Height,
-                        96, 96,
-                        PixelFormats.Bgra32,
-                        null,
-                        pixels,
-                        bitmap.Width * 4
-                    );
-                    source.Freeze();
-                    ImageThumbnail = source;
-                });
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Image thumbnail generation failed: {ex.Message}");
-                LogHelper.Log($"Could not generate image thumbnail for {DisplayName}");
-            }
-        });
+                    using MagickImage img = ImgHelper.GetImage(FullFilePath);
+                    if (img == null)
+                        return;
+
+                    img.Resize(90, 90);
+                    int w = (int)img.Width;
+                    int h = (int)img.Height;
+                    byte[] pixels = img.ToByteArray(MagickFormat.Bgra);
+
+                    using Bitmap bitmap = new(w, h, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    BitmapData bitmapData = bitmap.LockBits(
+                        new Rectangle(0, 0, w, h),
+                        ImageLockMode.WriteOnly,
+                        bitmap.PixelFormat);
+
+                    Marshal.Copy(pixels, 0, bitmapData.Scan0, pixels.Length);
+                    bitmap.UnlockBits(bitmapData);
+
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        var source = BitmapSource.Create(
+                            bitmap.Width,
+                            bitmap.Height,
+                            96, 96,
+                            PixelFormats.Bgra32,
+                            null,
+                            pixels,
+                            bitmap.Width * 4
+                        );
+                        source.Freeze();
+                        ImageThumbnail = source;
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Image thumbnail generation failed: {ex.Message}");
+                    LogHelper.Log($"Could not generate image thumbnail for {DisplayName}");
+                }
+            });
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
 
