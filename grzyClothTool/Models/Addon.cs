@@ -1,4 +1,4 @@
-﻿using grzyClothTool.Collections;
+using grzyClothTool.Collections;
 using grzyClothTool.Constants;
 using grzyClothTool.Models.Drawable;
 using grzyClothTool.Models.Other;
@@ -48,9 +48,9 @@ public class Addon : INotifyPropertyChanged
         }
     }
 
-    private ObservableCollection<GDrawable> _selectedDrawables;
+    private AsyncObservableCollection<GDrawable> _selectedDrawables;
     [JsonIgnore]
-    public ObservableCollection<GDrawable> SelectedDrawables
+    public AsyncObservableCollection<GDrawable> SelectedDrawables
     {
         get => _selectedDrawables;
         set
@@ -258,9 +258,9 @@ public class Addon : INotifyPropertyChanged
         }
     }
 
-    private ObservableCollection<GDrawable> _drawables;
+    private AsyncObservableCollection<GDrawable> _drawables;
 
-    public ObservableCollection<GDrawable> Drawables
+    public AsyncObservableCollection<GDrawable> Drawables
     {
         get { return _drawables; }
         set

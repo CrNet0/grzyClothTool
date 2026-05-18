@@ -1,4 +1,5 @@
-﻿using CodeWalker.GameFiles;
+using CodeWalker.GameFiles;
+using grzyClothTool.Collections;
 using grzyClothTool.Constants;
 using grzyClothTool.Controls;
 using grzyClothTool.Extensions;
@@ -70,14 +71,14 @@ namespace grzyClothTool.Models
         [JsonInclude]
         private string SavedAt => DateTime.Now.ToString("dd-MM-yyyy HH:mm:ss");
 
-        public ObservableCollection<string> Groups { get; set; } = [];
-        public ObservableCollection<string> Tags { get; set; } = [];
+        public AsyncObservableCollection<string> Groups { get; set; } = [];
+        public AsyncObservableCollection<string> Tags { get; set; } = [];
         
         [JsonIgnore]
         public ObservableCollection<MoveMenuItem> MoveMenuItems { get; set; } = [];
 
-        private ObservableCollection<Addon> _addons = [];
-        public ObservableCollection<Addon> Addons
+        private AsyncObservableCollection<Addon> _addons = [];
+        public AsyncObservableCollection<Addon> Addons
         {
             get { return _addons; }
             set
