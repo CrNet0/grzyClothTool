@@ -1,5 +1,6 @@
 using grzyClothTool.Models.Drawable;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,9 +11,9 @@ namespace grzyClothTool.Helpers;
 
 public static class DuplicateDetector
 {
-    private static readonly Dictionary<string, List<GDrawable>> _drawableDuplicateGroups = new();
+    private static readonly ConcurrentDictionary<string, List<GDrawable>> _drawableDuplicateGroups = new();
 
-    public static string ComputeDrawableHash(GDrawable drawable)
+    public static async Task<string?> ComputeDrawableHashAsync(GDrawable drawable)
     {
         if (drawable == null || drawable.IsReserved || drawable.IsEncrypted)
             return null;
@@ -28,7 +29,7 @@ public static class DuplicateDetector
             int attempts = 0;
             while (drawable.IsLoading && attempts < 50)
             {
-                Task.Delay(100).Wait();
+                await Task.Delay(100);
                 attempts++;
             }
 
@@ -67,18 +68,21 @@ public static class DuplicateDetector
         }
     }
 
-    public static List<GDrawable> CheckDrawableDuplicate(GDrawable drawable)
+    public static List<GDrawable>? CheckDrawableDuplicate(GDrawable drawable)
     {
         if (drawable == null || drawable.IsReserved)
             return null;
 
-        var hash = ComputeDrawableHash(drawable);
+        var hash = Task.Run(() => ComputeDrawableHashAsync(drawable)).GetAwaiter().GetResult();
         if (string.IsNullOrEmpty(hash))
             return null;
 
         if (_drawableDuplicateGroups.TryGetValue(hash, out var existingGroup))
         {
-            return existingGroup;
+            lock (existingGroup)
+            {
+                return [.. existingGroup];
+            }
         }
 
         return null;
@@ -111,20 +115,18 @@ public static class DuplicateDetector
         if (drawable == null || drawable.IsReserved)
             return;
 
-        var hash = ComputeDrawableHash(drawable);
+        var hash = Task.Run(() => ComputeDrawableHashAsync(drawable)).GetAwaiter().GetResult();
         if (string.IsNullOrEmpty(hash))
             return;
 
-        if (!_drawableDuplicateGroups.TryGetValue(hash, out List<GDrawable> value))
+        var value = _drawableDuplicateGroups.GetOrAdd(hash, _ => []);
+        lock (value)
         {
-            value = [];
-            _drawableDuplicateGroups[hash] = value;
-        }
-
-        if (!value.Contains(drawable))
-        {
-            value.Add(drawable);
-            UpdateDrawableDuplicateInfo(hash);
+            if (!value.Contains(drawable))
+            {
+                value.Add(drawable);
+                UpdateDrawableDuplicateInfo(hash);
+            }
         }
     }
 
@@ -139,15 +141,18 @@ public static class DuplicateDetector
 
         if (_drawableDuplicateGroups.TryGetValue(hash, out var group))
         {
-            group.Remove(drawable);
-            
-            if (group.Count == 0)
+            lock (group)
             {
-                _drawableDuplicateGroups.Remove(hash);
-            }
-            else
-            {
-                UpdateDrawableDuplicateInfo(hash);
+                group.Remove(drawable);
+                
+                if (group.Count == 0)
+                {
+                    _drawableDuplicateGroups.TryRemove(hash, out _);
+                }
+                else
+                {
+                    UpdateDrawableDuplicateInfo(hash);
+                }
             }
         }
 
@@ -161,24 +166,35 @@ public static class DuplicateDetector
         if (!_drawableDuplicateGroups.TryGetValue(hash, out var group))
             return;
 
-        var count = group.Count;
-        foreach (var drawable in group)
+        lock (group)
         {
-            if (drawable.DuplicateInfo.DuplicateGroupId != hash)
+            var count = group.Count;
+            foreach (var drawable in group)
             {
-                drawable.DuplicateInfo.DuplicateGroupId = hash;
-            }
+                if (drawable.DuplicateInfo.DuplicateGroupId != hash)
+                {
+                    drawable.DuplicateInfo.DuplicateGroupId = hash;
+                }
 
-            drawable.DuplicateInfo.DuplicateCount = count;
+                drawable.DuplicateInfo.DuplicateCount = count;
+            }
         }
     }
 
-    public static List<GDrawable> GetDrawablesInGroup(string hash)
+    public static List<GDrawable>? GetDrawablesInGroup(string hash)
     {
         if (string.IsNullOrEmpty(hash))
             return null;
 
-        return _drawableDuplicateGroups.TryGetValue(hash, out var group) ? group : null;
+        if (_drawableDuplicateGroups.TryGetValue(hash, out var group))
+        {
+            lock (group)
+            {
+                return [.. group];
+            }
+        }
+
+        return null;
     }
 
     public static void Clear()
@@ -188,7 +204,13 @@ public static class DuplicateDetector
 
     public static int GetDuplicateGroupCount()
     {
-        return _drawableDuplicateGroups.Count(kvp => kvp.Value.Count > 1);
+        return _drawableDuplicateGroups.Count(kvp =>
+        {
+            lock (kvp.Value)
+            {
+                return kvp.Value.Count > 1;
+            }
+        });
     }
 
 
