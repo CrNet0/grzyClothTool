@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -508,6 +508,12 @@ public static class FileHelper
             else
             {
                 using var image = ImgHelper.GetImage(texture.FullFilePath);
+                if (image == null)
+                {
+                    LogHelper.Log($"Could not save texture: {texture.DisplayName}. Error: Image failed to load or is corrupted.", LogType.Error);
+                    return;
+                }
+
                 image.Format = format.ToUpper() switch
                 {
                     "DDS" => MagickFormat.Dds,

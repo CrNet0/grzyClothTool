@@ -1,4 +1,4 @@
-﻿using CodeWalker.GameFiles;
+using CodeWalker.GameFiles;
 using grzyClothTool.Models.Texture;
 using ImageMagick;
 using System;
@@ -73,6 +73,10 @@ public static class ImgHelper
             };
 
             using var img = GetImage(gtxt.FullFilePath);
+            if (img == null)
+            {
+                return null;
+            }
             img.Format = MagickFormat.Dds;
 
             // Skip optimization (I think this is best way to not duplicate code, and reuse this for jpg/png textures that don't need optimization)
@@ -142,6 +146,10 @@ public static class ImgHelper
         else if (gtxt.Extension == ".jpg" || gtxt.Extension == ".png")
         {
             using var img = GetImage(gtxt.FullFilePath);
+            if (img == null)
+            {
+                throw new InvalidOperationException($"Failed to load texture image from path: {gtxt.FullFilePath}");
+            }
             img.Format = MagickFormat.Dds;
 
             var stream = new MemoryStream();
