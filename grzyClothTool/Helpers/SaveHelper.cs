@@ -1,4 +1,4 @@
-﻿using grzyClothTool.Models;
+using grzyClothTool.Models;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -150,7 +150,18 @@ public class SaveFile
 
                     var saveFileName = GetSaveFileName(isExternalProject);
                     var autoSavePath = Path.Combine(projectFolder, saveFileName);
-                    await File.WriteAllTextAsync(autoSavePath, json);
+                    
+                    var tempPath = autoSavePath + ".tmp";
+                    var backupPath = autoSavePath + ".bak";
+
+                    await File.WriteAllTextAsync(tempPath, json);
+
+                    if (File.Exists(autoSavePath))
+                    {
+                        File.Copy(autoSavePath, backupPath, true);
+                    }
+
+                    File.Move(tempPath, autoSavePath, true);
 
                     LogHelper.Log($"Auto-saved to {autoSavePath} in {timer.ElapsedMilliseconds}ms");
                 }
@@ -216,8 +227,44 @@ public class SaveFile
         {
             FileHelper.SetLoadContext(filePath);
 
-            var json = await File.ReadAllTextAsync(filePath);
-            var addonManager = JsonSerializer.Deserialize<AddonManager>(json, SerializerOptions) ?? throw new InvalidOperationException("Failed to deserialize save file.");
+            string json;
+            try
+            {
+                json = await File.ReadAllTextAsync(filePath);
+            }
+            catch (Exception ex)
+            {
+                var backupPath = filePath + ".bak";
+                if (File.Exists(backupPath))
+                {
+                    LogHelper.Log($"Failed to read primary save file. Restoring from backup: {backupPath}", Views.LogType.Warning);
+                    json = await File.ReadAllTextAsync(backupPath);
+                }
+                else
+                {
+                    throw new FileNotFoundException($"Failed to load primary save file, and no backup was found. Error: {ex.Message}");
+                }
+            }
+
+            AddonManager addonManager;
+            try
+            {
+                addonManager = JsonSerializer.Deserialize<AddonManager>(json, SerializerOptions) ?? throw new InvalidOperationException("Failed to deserialize save file.");
+            }
+            catch (JsonException jsonEx)
+            {
+                var backupPath = filePath + ".bak";
+                if (File.Exists(backupPath))
+                {
+                    LogHelper.Log($"Primary JSON deserialization failed. Restoring from backup: {backupPath}", Views.LogType.Warning);
+                    var backupJson = await File.ReadAllTextAsync(backupPath);
+                    addonManager = JsonSerializer.Deserialize<AddonManager>(backupJson, SerializerOptions) ?? throw new InvalidOperationException("Failed to deserialize backup save file.");
+                }
+                else
+                {
+                    throw new JsonException($"Primary save file is corrupted, and no backup was found. Error: {jsonEx.Message}");
+                }
+            }
 
             var fileName = Path.GetFileName(filePath);
             var isExternalFromFileName = fileName.Equals(AutoSaveExternalFileName, StringComparison.OrdinalIgnoreCase);

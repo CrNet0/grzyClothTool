@@ -529,11 +529,14 @@ namespace grzyClothTool.Models
             var drawablesWithDuplicates = drawables.Where(d => duplicatesDict.ContainsKey(d)).ToList();
             var drawablesWithoutDuplicates = drawables.Where(d => !duplicatesDict.ContainsKey(d)).ToList();
             
-            foreach (var drawable in drawablesWithoutDuplicates)
+            if (drawablesWithoutDuplicates.Count > 0)
             {
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    AddDrawableInternal(drawable);
+                    foreach (var drawable in drawablesWithoutDuplicates)
+                    {
+                        AddDrawableInternal(drawable);
+                    }
                 });
             }
             
@@ -555,11 +558,14 @@ namespace grzyClothTool.Models
 
                 if (result != null && !result.Cancelled)
                 {
-                    foreach (var drawable in result.DrawablesToAdd)
+                    if (result.DrawablesToAdd.Count > 0)
                     {
                         await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                         {
-                            AddDrawableInternal(drawable);
+                            foreach (var drawable in result.DrawablesToAdd)
+                            {
+                                AddDrawableInternal(drawable);
+                            }
                         });
                     }
 
