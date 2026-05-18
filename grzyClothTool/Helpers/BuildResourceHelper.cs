@@ -1,4 +1,4 @@
-﻿using CodeWalker.GameFiles;
+using CodeWalker.GameFiles;
 using CodeWalker.GameFiles;
 using CodeWalker.Utils;
 using grzyClothTool.Constants;
@@ -169,9 +169,10 @@ public class BuildResourceHelper
         var runningTasks = fileOperations.ToList(); // Start all file operations
         int totalTasks = runningTasks.Count;
 
-        while (completedTasks < totalTasks)
+        while (runningTasks.Count > 0)
         {
             Task finishedTask = await Task.WhenAny(runningTasks);
+            runningTasks.Remove(finishedTask);
             completedTasks++;
 
             if (completedTasks - lastReportedProgress >= 20 || runningTasks.Count == 0)
@@ -435,9 +436,10 @@ public class BuildResourceHelper
         var runningTasks = fileOperations.ToList(); // Start all file operations
         int totalTasks = runningTasks.Count;
 
-        while (completedTasks < totalTasks)
+        while (runningTasks.Count > 0)
         {
             Task finishedTask = await Task.WhenAny(runningTasks);
+            runningTasks.Remove(finishedTask);
             completedTasks++;
 
             if (completedTasks - lastReportedProgress >= 20 || runningTasks.Count == 0)
